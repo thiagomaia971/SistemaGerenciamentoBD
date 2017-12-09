@@ -7,6 +7,8 @@ import entidades.arvoreBMais.Key;
 import entidades.arvoreBMais.Node;
 import entidades.blocos.*;
 import entidades.index.IndexFileManager;
+import exceptions.ContainerNoExistentException;
+import exceptions.IndexNoExistentException;
 import factories.ContainerId;
 import interfaces.IFileManager;
 import interfaces.IIndexFileManager;
@@ -21,7 +23,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
-import services.CollumnService;
 import services.TableService;
 
 import java.io.IOException;
@@ -32,7 +33,6 @@ import java.util.logging.Logger;
 
 
 public class MainController implements Initializable {
-    private CollumnService _collumnService;
     private TableService __tableService;
 
     private IFileManager _ga;
@@ -60,7 +60,8 @@ public class MainController implements Initializable {
     private ListView<String> collumnsListView;
     @FXML
     private TextField ordemDoIndice;
-    @FXML TextField nomeIndiceTextField;
+    @FXML
+    TextField nomeIndiceTextField;
 
     @FXML
     TableView<ObservableList<String>> tableViewBancoValores;
@@ -75,14 +76,14 @@ public class MainController implements Initializable {
     private int tableSelected() {
         return tablesComboBox.getSelectionModel().getSelectedIndex();
     }
-    private ContainerId containerIdSelected() { return containerIds[tableSelected()]; }
+
+    private ContainerId containerIdSelected() {
+        return containerIds[tableSelected()];
+    }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        this.
-
         __tableService = new TableService();
-        _collumnService = new CollumnService();
 
         _ga = new GerenciadorArquivo();
         _gaService = new GerenciadorArquivoService(_ga);
@@ -126,7 +127,7 @@ public class MainController implements Initializable {
         List<String> columns = null;
         try {
             columns = _ga.getColumns(containerIdSelecionado);
-        } catch (IOException e) {
+        } catch (ContainerNoExistentException e) {
             e.printStackTrace();
         }
 
@@ -149,7 +150,7 @@ public class MainController implements Initializable {
         try {
             indexFileManager.createIndex(containerIdSelected(), nomeIndiceTextField.getText());
             _ga.adicionarIndiceAoContainerId(containerIdSelected(), nomeIndiceTextField.getText());
-        } catch (IOException e) {
+        } catch (ContainerNoExistentException | IndexNoExistentException e) {
             e.printStackTrace();
         }
 
@@ -157,7 +158,7 @@ public class MainController implements Initializable {
 
         try {
             adicionarIndiceNaTableView(IndexFileManager.getDiretorio(containerIdSelected(), nomeIndiceTextField.getText()));
-        } catch (IOException e) {
+        } catch (IndexNoExistentException e) {
             e.printStackTrace();
         }
     }
@@ -240,7 +241,7 @@ public class MainController implements Initializable {
         try {
             BlocoContainer container = this._ga.selectAllFrom(indice.tabelaId);
             for (BlocoDado bd : container.getBlocosDados()) {
-                for (Linha tuple : bd.getTuples()) {
+                for (Tuple tuple : bd.getTuples()) {
                     StringBuilder c = new StringBuilder();
                     for (String coluna : colunas) {
                         c.append(tuple.getColunas().get(Integer.parseInt(coluna)).getInformacao());
@@ -341,14 +342,13 @@ public class MainController implements Initializable {
         if (keyback == null) {
             this.findKeyResultado.setText("Não achou!");
             this.findKeyResultadoCompleto.getItems().add("Não achou!");
-        }
-        else {
+        } else {
             this.findKeyResultado.setText("Row Id: " + keyback.toString());
             try {
-                ArrayList<Linha> tuplas = this._ga.lerBloco(keyback).getTuples();
+                ArrayList<Tuple> tuplas = this._ga.lerBloco(keyback).getTuples();
                 List<String> cc = new ArrayList<String>();
 
-                for (Linha t : tuplas) {
+                for (Tuple t : tuplas) {
                     StringBuilder tupleString = new StringBuilder();
                     for (Coluna c : t.getColunas()) {
                         tupleString.append(c.getInformacao()).append("; ");

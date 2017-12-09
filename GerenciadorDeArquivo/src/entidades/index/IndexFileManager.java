@@ -4,7 +4,8 @@ import entidades.GerenciadorArquivo;
 import entidades.GerenciadorDeIO;
 import entidades.blocos.BlocoContainer;
 import entidades.blocos.BlocoControle;
-import entidades.blocos.Descritor;
+import exceptions.ContainerNoExistentException;
+import exceptions.IndexNoExistentException;
 import factories.ContainerId;
 import interfaces.IIndexFileManager;
 import utils.GlobalVariables;
@@ -12,7 +13,6 @@ import utils.GlobalVariables;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class IndexFileManager implements IIndexFileManager {
@@ -22,22 +22,22 @@ public class IndexFileManager implements IIndexFileManager {
     private static final String EXTENSION = ".index";
 
     @Override
-    public BlocoContainer createIndex(ContainerId containerId, String indexName) throws IOException {
+    public void createIndex(ContainerId containerId, String indexName) throws IndexNoExistentException {
         BlocoContainer controller = new BlocoContainer(containerId.getValue());
-        GerenciadorDeIO.gravarBytes(getDiretorio(containerId, indexName), controller.toByteArray());
-        return controller;
+        try {
+            GerenciadorDeIO.gravarBytes(getDiretorio(containerId, indexName), controller.toByteArray());
+        } catch (FileNotFoundException ignored) {
+        }
+
     }
 
-    private void adicionarIndexNameToIndexContainer(BlocoContainer controller, String indexName) {
-        ArrayList<Descritor> descritors = new ArrayList<>();
-        descritors.add(new Descritor(indexName));
-
-        controller.getBlocoControle().adicionarDescritores(descritors);
-    }
-
-    public static String getDiretorio(ContainerId containerId, String indexName) throws IOException {
+    public static String getDiretorio(ContainerId containerId, String indexName) throws IndexNoExistentException {
         String _path = PATH + "/" + containerId.getValue() + "/" + PREFIX + indexName + EXTENSION;
-        GerenciadorDeIO.makeDirs(_path);
+        try {
+            GerenciadorDeIO.makeDirs(_path);
+        } catch (IOException e) {
+            throw new IndexNoExistentException(indexName);
+        }
         return _path;
     }
 
@@ -56,17 +56,18 @@ public class IndexFileManager implements IIndexFileManager {
     }
 
     @Override
-    public List<String> getIndicesPath(ContainerId containerIdSelecionado) throws IOException {
+    public List<String> getIndicesPath(ContainerId containerIdSelecionado) throws ContainerNoExistentException {
         BlocoControle controle = new BlocoControle(containerIdSelecionado.getValue());
-        String tablePath = GerenciadorArquivo.getDiretorio(containerIdSelecionado);
+        String tablePath = GerenciadorArquivo.getDiretorio(containerIdSelecionado.getValue());
 
         try {
             controle.fromByteArray(GerenciadorDeIO.getBytes(tablePath, 0, 11));
             controle.fromByteArray(GerenciadorDeIO.getBytes(tablePath, 0, 11 + controle.getHeader().getTamanhoDescritor()));
         } catch (FileNotFoundException e) {
-            System.out.println("Não foi achado o Container: " + containerIdSelecionado.getValue());
-            return null;
+            throw new ContainerNoExistentException("");
         }
         return controle.getIndexName();
     }
+
+
 }
